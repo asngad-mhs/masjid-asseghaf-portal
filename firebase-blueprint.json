@@ -1,0 +1,166 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Registered users in the system",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["email", "role", "createdAt"]
+    },
+    "Event": {
+      "title": "Event",
+      "description": "Mosque activities and events",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "location": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["title", "description", "date", "createdAt", "createdBy"]
+    },
+    "News": {
+      "title": "News",
+      "description": "Latest news and articles",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["title", "content", "createdAt", "createdBy"]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "description": "General announcements",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["title", "content", "createdAt", "createdBy"]
+    },
+    "Donation": {
+      "title": "Donation",
+      "description": "Donation records",
+      "type": "object",
+      "properties": {
+        "amount": { "type": "number" },
+        "message": { "type": "string" },
+        "donorId": { "type": "string" },
+        "donorName": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "completed", "failed"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["amount", "status", "createdAt"]
+    },
+    "Tausiyah": {
+      "title": "Tausiyah",
+      "description": "Online Tausiyah/Sermons",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "speaker": { "type": "string" },
+        "videoUrl": { "type": "string" },
+        "description": { "type": "string" },
+        "date": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["title", "speaker", "createdAt", "createdBy"]
+    },
+    "Khotbah": {
+      "title": "Khotbah",
+      "description": "Friday Khotbah records",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "khatib": { "type": "string" },
+        "content": { "type": "string" },
+        "date": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["title", "khatib", "date", "createdAt", "createdBy"]
+    },
+    "Gallery": {
+      "title": "Gallery Image",
+      "description": "Images for the gallery",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["title", "imageUrl", "createdAt", "createdBy"]
+    },
+    "PrayerHistory": {
+      "title": "PrayerHistory",
+      "description": "User's personal prayer history tracking",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "date": { "type": "string" },
+        "fajr": { "type": "boolean" },
+        "dhuhr": { "type": "boolean" },
+        "asr": { "type": "boolean" },
+        "maghrib": { "type": "boolean" },
+        "isha": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "date", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "User" },
+      "description": "Collection of user profiles."
+    },
+    "/events/{eventId}": {
+      "schema": { "$ref": "Event" },
+      "description": "Collection of mosque events."
+    },
+    "/news/{newsId}": {
+      "schema": { "$ref": "News" },
+      "description": "Collection of mosque news articles."
+    },
+    "/announcements/{announcementId}": {
+      "schema": { "$ref": "Announcement" },
+      "description": "Collection of announcements."
+    },
+    "/donations/{donationId}": {
+      "schema": { "$ref": "Donation" },
+      "description": "Collection of donations."
+    },
+    "/tausiyah/{tausiyahId}": {
+      "schema": { "$ref": "Tausiyah" },
+      "description": "Collection of tausiyah."
+    },
+    "/khotbah/{khotbahId}": {
+      "schema": { "$ref": "Khotbah" },
+      "description": "Collection of Friday khotbah records."
+    },
+    "/gallery/{imageId}": {
+      "schema": { "$ref": "Gallery" },
+      "description": "Collection of gallery images."
+    },
+    "/prayer_history/{historyId}": {
+      "schema": { "$ref": "PrayerHistory" },
+      "description": "Collection of user prayer histories."
+    }
+  }
+}

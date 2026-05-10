@@ -1,0 +1,175 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Validation Helpers
+    function isValidUser(data) {
+      return data.keys().hasAll(['email', 'role', 'createdAt']) &&
+             data.email is string && data.email.size() > 0 && data.email.size() <= 256 &&
+             data.role in ['user', 'admin'] &&
+             data.createdAt is string && data.createdAt.size() > 0;
+    }
+
+    function isValidEvent(data) {
+      return data.keys().hasAll(['title', 'description', 'date', 'createdAt', 'createdBy']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 256 &&
+             data.description is string && data.description.size() <= 10000 &&
+             data.date is string && data.date.size() > 0 && data.date.size() <= 64 &&
+             data.createdAt is string && data.createdAt.size() > 0 &&
+             data.createdBy is string && data.createdBy == request.auth.uid;
+    }
+
+    function isValidNews(data) {
+      return data.keys().hasAll(['title', 'content', 'createdAt', 'createdBy']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 256 &&
+             data.content is string && data.content.size() <= 50000 &&
+             data.createdAt is string && data.createdAt.size() > 0 &&
+             data.createdBy is string && data.createdBy == request.auth.uid;
+    }
+
+    function isValidAnnouncement(data) {
+      return data.keys().hasAll(['title', 'content', 'createdAt', 'createdBy']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 256 &&
+             data.content is string && data.content.size() <= 10000 &&
+             data.createdAt is string && data.createdAt.size() > 0 &&
+             data.createdBy is string && data.createdBy == request.auth.uid;
+    }
+
+    function isValidDonation(data) {
+      return data.keys().hasAll(['amount', 'status', 'createdAt']) &&
+             data.amount is number && data.amount > 0 &&
+             data.status in ['pending', 'completed', 'failed'] &&
+             data.createdAt is string && data.createdAt.size() > 0;
+    }
+
+    function isValidTausiyah(data) {
+      return data.keys().hasAll(['title', 'speaker', 'createdAt', 'createdBy']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 256 &&
+             data.speaker is string && data.speaker.size() > 0 && data.speaker.size() <= 256 &&
+             data.createdAt is string && data.createdAt.size() > 0 &&
+             data.createdBy is string && data.createdBy == request.auth.uid;
+    }
+
+    function isValidKhotbah(data) {
+      return data.keys().hasAll(['title', 'khatib', 'date', 'createdAt', 'createdBy']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 256 &&
+             data.khatib is string && data.khatib.size() > 0 && data.khatib.size() <= 256 &&
+             data.date is string && data.date.size() > 0 && data.date.size() <= 64 &&
+             data.createdAt is string && data.createdAt.size() > 0 &&
+             data.createdBy is string && data.createdBy == request.auth.uid;
+    }
+
+    function isValidGallery(data) {
+      return data.keys().hasAll(['title', 'imageUrl', 'createdAt', 'createdBy']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 256 &&
+             data.imageUrl is string && data.imageUrl.size() > 0 && data.imageUrl.size() <= 1024 &&
+             data.createdAt is string && data.createdAt.size() > 0 &&
+             data.createdBy is string && data.createdBy == request.auth.uid;
+    }
+
+    function isValidPrayerHistory(data) {
+      return data.keys().hasAll(['userId', 'date', 'createdAt']) &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.date is string && data.date.size() > 0 && data.date.size() <= 64 &&
+             data.createdAt is string && data.createdAt.size() > 0;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      // Allow user to create their own profile, but they cannot give themselves the "admin" role unless they are the hardcoded first admin
+      // Since we don't have a hardcoded admin email here easily accessible and verifiable, we'll allow creating 'user' roles only for new users. 
+      // Assuming a bootstrap or manual change for the first admin.
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUser(incoming()) && incoming().role == 'user';
+      // User can update their displayName, but not role or email.
+      allow update: if isOwner(userId) && isValidUser(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName']) && incoming().role == existing().role && incoming().email == existing().email;
+    }
+
+    match /events/{eventId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidId(eventId) && isValidEvent(incoming());
+      allow update: if isAdmin() && isValidEvent(incoming()) && incoming().createdBy == existing().createdBy;
+      allow delete: if isAdmin();
+    }
+
+    match /news/{newsId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidId(newsId) && isValidNews(incoming());
+      allow update: if isAdmin() && isValidNews(incoming()) && incoming().createdBy == existing().createdBy;
+      allow delete: if isAdmin();
+    }
+
+    match /announcements/{announcementId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidId(announcementId) && isValidAnnouncement(incoming());
+      allow update: if isAdmin() && isValidAnnouncement(incoming()) && incoming().createdBy == existing().createdBy;
+      allow delete: if isAdmin();
+    }
+
+    match /donations/{donationId} {
+      allow get: if isAdmin() || (isSignedIn() && existing().donorId == request.auth.uid);
+      allow list: if isAdmin() || (isSignedIn() && resource.data.donorId == request.auth.uid);
+      allow create: if isSignedIn() && isValidId(donationId) && isValidDonation(incoming());
+      allow update: if isAdmin() && isValidDonation(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /tausiyah/{tausiyahId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidId(tausiyahId) && isValidTausiyah(incoming());
+      allow update: if isAdmin() && isValidTausiyah(incoming()) && incoming().createdBy == existing().createdBy;
+      allow delete: if isAdmin();
+    }
+
+    match /khotbah/{khotbahId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidId(khotbahId) && isValidKhotbah(incoming());
+      allow update: if isAdmin() && isValidKhotbah(incoming()) && incoming().createdBy == existing().createdBy;
+      allow delete: if isAdmin();
+    }
+
+    match /gallery/{imageId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidId(imageId) && isValidGallery(incoming());
+      allow update: if isAdmin() && isValidGallery(incoming()) && incoming().createdBy == existing().createdBy;
+      allow delete: if isAdmin();
+    }
+
+    match /prayer_history/{historyId} {
+      allow get: if isOwner(existing().userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isOwner(incoming().userId) && isValidId(historyId) && isValidPrayerHistory(incoming());
+      // For update, need exactly specific keys, plus they might only update specific prayers.
+      // But isValidPrayerHistory doesn't enforce the fjar, dhuhr etc keys, just userId, date, createdAt. They can add them dynamically.
+      allow update: if isOwner(existing().userId) && isOwner(incoming().userId) && isValidPrayerHistory(incoming()) && incoming().date == existing().date && incoming().createdAt == existing().createdAt;
+      allow delete: if isOwner(existing().userId);
+    }
+  }
+}

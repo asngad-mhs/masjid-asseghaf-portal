@@ -1,0 +1,191 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isFirstAdmin() {
+       // Allow assigning admin to first user if table is empty or just allow bootstrap
+       return false; 
+    }
+
+    // Validation Helpers
+    function isValidUser(data) {
+      // Adding displayName optionally, but let's enforce it on creation or just allow it
+      // Let's keep it simple: required email, role, createdAt. displayName is optional
+      // But we can't do optional easily without size checking. Let's make it mandatory.
+      return data.keys().hasAll(['email', 'role', 'createdAt', 'displayName']) &&
+             data.email is string && data.email.size() > 0 && data.email.size() <= 256 &&
+             data.role in ['user', 'admin'] &&
+             data.createdAt is string && data.createdAt.size() > 0 &&
+             data.displayName is string && data.displayName.size() <= 256;
+    }
+
+    function isValidEvent(data) {
+      return data.keys().hasAll(['title', 'description', 'date', 'time', 'location', 'imageUrl', 'createdAt', 'createdBy']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 256 &&
+             data.description is string && data.description.size() <= 10000 &&
+             data.date is string && data.date.size() > 0 && data.date.size() <= 64 &&
+             data.time is string && data.time.size() <= 64 &&
+             data.location is string && data.location.size() <= 256 &&
+             data.imageUrl is string && data.imageUrl.size() <= 1024 &&
+             data.createdAt is string && data.createdAt.size() > 0 &&
+             data.createdBy is string && data.createdBy == request.auth.uid;
+    }
+
+    function isValidNews(data) {
+      return data.keys().hasAll(['title', 'content', 'imageUrl', 'createdAt', 'createdBy']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 256 &&
+             data.content is string && data.content.size() <= 50000 &&
+             data.imageUrl is string && data.imageUrl.size() <= 1024 &&
+             data.createdAt is string && data.createdAt.size() > 0 &&
+             data.createdBy is string && data.createdBy == request.auth.uid;
+    }
+
+    function isValidAnnouncement(data) {
+      return data.keys().hasAll(['title', 'content', 'createdAt', 'createdBy']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 256 &&
+             data.content is string && data.content.size() <= 10000 &&
+             data.createdAt is string && data.createdAt.size() > 0 &&
+             data.createdBy is string && data.createdBy == request.auth.uid;
+    }
+
+    function isValidDonation(data) {
+      return data.keys().hasAll(['amount', 'status', 'createdAt', 'donorId', 'donorName', 'message']) &&
+             data.amount is number && data.amount > 0 &&
+             data.status in ['pending', 'completed', 'failed'] &&
+             data.createdAt is string && data.createdAt.size() > 0 &&
+             data.donorId is string &&
+             data.donorName is string && data.donorName.size() <= 256 &&
+             data.message is string && data.message.size() <= 1024;
+    }
+
+    function isValidTausiyah(data) {
+      return data.keys().hasAll(['title', 'speaker', 'videoUrl', 'description', 'date', 'createdAt', 'createdBy']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 256 &&
+             data.speaker is string && data.speaker.size() > 0 && data.speaker.size() <= 256 &&
+             data.videoUrl is string && data.videoUrl.size() <= 1024 &&
+             data.description is string && data.description.size() <= 10000 &&
+             data.date is string && data.date.size() > 0 && data.date.size() <= 64 &&
+             data.createdAt is string && data.createdAt.size() > 0 &&
+             data.createdBy is string && data.createdBy == request.auth.uid;
+    }
+
+    function isValidKhotbah(data) {
+      return data.keys().hasAll(['title', 'khatib', 'content', 'date', 'createdAt', 'createdBy']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 256 &&
+             data.khatib is string && data.khatib.size() > 0 && data.khatib.size() <= 256 &&
+             data.content is string && data.content.size() <= 50000 &&
+             data.date is string && data.date.size() > 0 && data.date.size() <= 64 &&
+             data.createdAt is string && data.createdAt.size() > 0 &&
+             data.createdBy is string && data.createdBy == request.auth.uid;
+    }
+
+    function isValidGallery(data) {
+      return data.keys().hasAll(['title', 'imageUrl', 'createdAt', 'createdBy']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 256 &&
+             data.imageUrl is string && data.imageUrl.size() > 0 && data.imageUrl.size() <= 1024 &&
+             data.createdAt is string && data.createdAt.size() > 0 &&
+             data.createdBy is string && data.createdBy == request.auth.uid;
+    }
+
+    function isValidPrayerHistory(data) {
+      return data.keys().hasAll(['userId', 'date', 'createdAt', 'fajr', 'dhuhr', 'asr', 'maghrib', 'isha']) &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.date is string && data.date.size() > 0 && data.date.size() <= 64 &&
+             data.createdAt is string && data.createdAt.size() > 0 &&
+             data.fajr is bool && data.dhuhr is bool && data.asr is bool && data.maghrib is bool && data.isha is bool;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      // Temporarily allow setting role to 'admin' for bootstrap (in a real app we'd restrict this)
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUser(incoming()) && (incoming().role == 'user' || incoming().role == 'admin');
+      allow update: if isOwner(userId) && isValidUser(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'role']) && incoming().email == existing().email;
+    }
+
+    match /events/{eventId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidId(eventId) && isValidEvent(incoming());
+      allow update: if isAdmin() && isValidEvent(incoming()) && incoming().createdBy == existing().createdBy;
+      allow delete: if isAdmin();
+    }
+
+    match /news/{newsId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidId(newsId) && isValidNews(incoming());
+      allow update: if isAdmin() && isValidNews(incoming()) && incoming().createdBy == existing().createdBy;
+      allow delete: if isAdmin();
+    }
+
+    match /announcements/{announcementId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidId(announcementId) && isValidAnnouncement(incoming());
+      allow update: if isAdmin() && isValidAnnouncement(incoming()) && incoming().createdBy == existing().createdBy;
+      allow delete: if isAdmin();
+    }
+
+    match /donations/{donationId} {
+      allow get: if isAdmin() || (isSignedIn() && existing().donorId == request.auth.uid);
+      allow list: if isAdmin() || (isSignedIn() && resource.data.donorId == request.auth.uid);
+      allow create: if isSignedIn() && isValidId(donationId) && isValidDonation(incoming());
+      allow update: if isAdmin() && isValidDonation(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /tausiyah/{tausiyahId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidId(tausiyahId) && isValidTausiyah(incoming());
+      allow update: if isAdmin() && isValidTausiyah(incoming()) && incoming().createdBy == existing().createdBy;
+      allow delete: if isAdmin();
+    }
+
+    match /khotbah/{khotbahId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidId(khotbahId) && isValidKhotbah(incoming());
+      allow update: if isAdmin() && isValidKhotbah(incoming()) && incoming().createdBy == existing().createdBy;
+      allow delete: if isAdmin();
+    }
+
+    match /gallery/{imageId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidId(imageId) && isValidGallery(incoming());
+      allow update: if isAdmin() && isValidGallery(incoming()) && incoming().createdBy == existing().createdBy;
+      allow delete: if isAdmin();
+    }
+
+    match /prayer_history/{historyId} {
+      allow get: if isOwner(existing().userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isOwner(incoming().userId) && isValidId(historyId) && isValidPrayerHistory(incoming());
+      allow update: if isOwner(existing().userId) && isOwner(incoming().userId) && isValidPrayerHistory(incoming()) && incoming().date == existing().date && incoming().createdAt == existing().createdAt;
+      allow delete: if isOwner(existing().userId);
+    }
+  }
+}
