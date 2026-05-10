@@ -46,7 +46,7 @@ export function AdminGallery() {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const MAX_SIZE = 1200;
+        const MAX_SIZE = 800;
         
         if (width > height && width > MAX_SIZE) {
           height *= MAX_SIZE / width;
@@ -63,7 +63,7 @@ export function AdminGallery() {
         
         canvas.toBlob((blob) => {
           resolve(blob || file);
-        }, 'image/jpeg', 0.8);
+        }, 'image/jpeg', 0.6);
       };
       img.onerror = () => resolve(file);
       img.src = URL.createObjectURL(file);
