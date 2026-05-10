@@ -1,11 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../lib/AuthContext';
 import { 
   Calendar, Newspaper, Bell, HeartHandshake, Image as ImageIcon, Video, FileText, 
-  Settings, LogOut 
+  LogOut 
 } from 'lucide-react';
 import { AdminEvents } from './AdminEvents';
+import { AdminNews } from './AdminNews';
+import { AdminAnnouncements } from './AdminAnnouncements';
+import { AdminDonations } from './AdminDonations';
+import { AdminGallery } from './AdminGallery';
+import { AdminTausiyah } from './AdminTausiyah';
+import { AdminKhotbah } from './AdminKhotbah';
 
 export function AdminPortal() {
   const { user, logout } = useAuth();
@@ -71,9 +77,14 @@ export function AdminPortal() {
       <main className="flex-1 p-8 hidden md:block">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 min-h-[calc(100vh-4rem)]">
           <Routes>
-            <Route path="/" element={<div><h2>Pilih menu di samping untuk mulai mengelola.</h2></div>} />
+            <Route path="/" element={<div><h2 className="text-xl font-medium text-emerald-900">Pilih menu di samping untuk mulai mengelola.</h2></div>} />
             <Route path="/events" element={<AdminEvents />} />
-            {/* The rest can be similarly implemented or left to show "Coming soon" for brevity */}
+            <Route path="/news" element={<AdminNews />} />
+            <Route path="/announcements" element={<AdminAnnouncements />} />
+            <Route path="/donations" element={<AdminDonations />} />
+            <Route path="/gallery" element={<AdminGallery />} />
+            <Route path="/tausiyah" element={<AdminTausiyah />} />
+            <Route path="/khotbah" element={<AdminKhotbah />} />
             <Route path="*" element={<div>Modul ini sedang dalam pengembangan / dapat diakses segera.</div>} />
           </Routes>
         </div>
