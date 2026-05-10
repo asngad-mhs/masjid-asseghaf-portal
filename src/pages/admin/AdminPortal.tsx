@@ -68,16 +68,27 @@ export function AdminPortal() {
         </div>
       </aside>
 
-      {/* Mobile Header (Only visible on small screens to tell them to use desktop) */}
-      <div className="md:hidden p-8 w-full text-center">
-        <p className="text-slate-600">Portal Admin lebih optimal diakses menggunakan perangkat desktop/komputer.</p>
-      </div>
-
       {/* Main Content */}
-      <main className="flex-1 p-8 hidden md:block">
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 min-h-[calc(100vh-4rem)]">
+      <main className="flex-1 p-4 md:p-8 flex flex-col w-full overflow-x-hidden">
+        {/* Mobile Nav Top Bar */}
+        <div className="md:hidden bg-emerald-950 text-white p-4 rounded-xl mb-4 flex overflow-x-auto space-x-2">
+           {menuItems.map((item) => (
+              <Link
+                key={item.name}
+                to={item.path}
+                className={`flex-shrink-0 flex items-center px-3 py-2 rounded-lg ${
+                  location.pathname.startsWith(item.path) ? 'bg-emerald-800 text-white' : 'text-emerald-200 hover:bg-emerald-900'
+                }`}
+              >
+                {item.icon}
+                <span className="text-sm font-medium">{item.name}</span>
+              </Link>
+           ))}
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 md:p-6 min-h-[calc(100vh-4rem)] overflow-x-auto">
           <Routes>
-            <Route path="/" element={<div><h2 className="text-xl font-medium text-emerald-900">Pilih menu di samping untuk mulai mengelola.</h2></div>} />
+            <Route path="/" element={<div><h2 className="text-xl font-medium text-emerald-900">Pilih menu untuk mulai mengelola.</h2></div>} />
             <Route path="/events" element={<AdminEvents />} />
             <Route path="/news" element={<AdminNews />} />
             <Route path="/announcements" element={<AdminAnnouncements />} />
