@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db, storage } from '../../lib/firebase';
 import { useAuth } from '../../lib/AuthContext';
 import { collection, query, orderBy, getDocs, addDoc, deleteDoc, updateDoc, doc } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const getYoutubeId = (url: string) => {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -39,6 +39,38 @@ export function AdminNews() {
     setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   };
 
+  const compressImage = async (file: File): Promise<Blob | File> => {
+    if (!file.type.startsWith('image/')) return file;
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const MAX_SIZE = 1200;
+        
+        if (width > height && width > MAX_SIZE) {
+          height *= MAX_SIZE / width;
+          width = MAX_SIZE;
+        } else if (height > MAX_SIZE) {
+          width *= MAX_SIZE / height;
+          height = MAX_SIZE;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) ctx.drawImage(img, 0, 0, width, height);
+        
+        canvas.toBlob((blob) => {
+          resolve(blob || file);
+        }, 'image/jpeg', 0.8);
+      };
+      img.onerror = () => resolve(file);
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -53,7 +85,7 @@ export function AdminNews() {
     }
 
     setLoading(true);
-    setProgress(0);
+    setProgress(5);
 
     try {
       let finalUrl = mediaUrl;
@@ -65,25 +97,17 @@ export function AdminNews() {
           return;
         }
 
-        const storageRef = ref(storage, `news/${Date.now()}_${file.name}`);
-        const uploadTask = uploadBytesResumable(storageRef, file);
-
-        await new Promise((resolve, reject) => {
-          uploadTask.on(
-            'state_changed',
-            (snapshot) => {
-              const p = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-              setProgress(p);
-            },
-            (error) => reject(error),
-            () => {
-              getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-                finalUrl = downloadURL;
-                resolve(null);
-              }).catch(reject);
-            }
-          );
-        });
+        setProgress(30);
+        const uploadData = await compressImage(file);
+        
+        const fileExt = file.type.startsWith('image/') ? 'jpg' : file.name.split('.').pop() || 'tmp';
+        const storageRef = ref(storage, `news/${Date.now()}_upload.${fileExt}`);
+        
+        setProgress(50);
+        const snapshot = await uploadBytes(storageRef, uploadData);
+        
+        setProgress(90);
+        finalUrl = await getDownloadURL(snapshot.ref);
       } else if (editingId && !file && uploadType === 'file') {
         // keep existing url if file upload was selected but no new file provided
         const existingItem = items.find(i => i.id === editingId);
@@ -91,6 +115,8 @@ export function AdminNews() {
           finalUrl = existingItem.imageUrl;
         }
       }
+
+      setProgress(95);
 
       if (editingId) {
         await updateDoc(doc(db, 'news', editingId), {
