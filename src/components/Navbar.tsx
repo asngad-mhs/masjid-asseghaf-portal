@@ -50,12 +50,6 @@ export function Navbar() {
                 Riwayat & Ibadah
               </Link>
             )}
-            
-            {role === 'admin' && (
-              <Link to="/admin" className="hover:text-emerald-300 font-medium transition-colors">
-                Portal Admin
-              </Link>
-            )}
 
             <button
               onClick={handleAuth}
@@ -98,16 +92,6 @@ export function Navbar() {
                 onClick={() => setIsOpen(false)}
               >
                 Riwayat & Ibadah
-              </Link>
-            )}
-
-            {role === 'admin' && (
-              <Link
-                to="/admin"
-                className="block px-3 py-2 rounded-md font-medium hover:bg-emerald-700"
-                onClick={() => setIsOpen(false)}
-              >
-                Portal Admin
               </Link>
             )}
             
