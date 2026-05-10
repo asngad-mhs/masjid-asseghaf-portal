@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Clock, MapPin, Calendar, Image as ImageIcon, Volume2 } from 'lucide-react';
+import { Calendar, MapPin, Volume2, Clock, ImageIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import axios from 'axios';
@@ -75,7 +75,6 @@ export function HomePage() {
       {/* Hero Section */}
       <section className="relative bg-emerald-900 text-white py-24 px-4 overflow-hidden">
         <div className="absolute inset-0 opacity-20">
-          {/* Subtle pattern or image placeholder */}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-500 via-emerald-900 to-black"></div>
         </div>
         <div className="max-w-4xl mx-auto text-center relative z-10">
@@ -138,17 +137,38 @@ export function HomePage() {
             </div>
             <div className="space-y-6">
               {news.length === 0 ? <p className="text-slate-500">Belum ada berita.</p> : 
-                news.map(item => (
-                  <div key={item.id} className="flex space-x-4 bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                    {item.imageUrl && (
-                      <img src={item.imageUrl} alt={item.title} className="w-24 h-24 object-cover rounded-lg" />
-                    )}
-                    <div>
-                      <h3 className="font-semibold text-lg text-slate-900 leading-tight mb-2">{item.title}</h3>
-                      <p className="text-sm text-slate-500 line-clamp-2">{item.content}</p>
+                news.map(item => {
+                  const getYoutubeId = (url: string) => {
+                    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+                    const match = url.match(regExp);
+                    return (match && match[2].length === 11) ? match[2] : null;
+                  };
+                  const ytId = item.imageUrl ? getYoutubeId(item.imageUrl) : null;
+
+                  return (
+                    <div key={item.id} className="flex space-x-4 bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                      {item.imageUrl && (
+                        ytId ? (
+                          <div className="w-24 h-24 shrink-0 bg-black rounded-lg overflow-hidden">
+                             <iframe 
+                               width="100%" 
+                               height="100%" 
+                               src={`https://www.youtube.com/embed/${ytId}`} 
+                               title={item.title}
+                               frameBorder="0" 
+                             ></iframe>
+                          </div>
+                        ) : (
+                          <img src={item.imageUrl} alt={item.title} className="w-24 h-24 object-cover rounded-lg shrink-0" />
+                        )
+                      )}
+                      <div>
+                        <h3 className="font-semibold text-lg text-slate-900 leading-tight mb-2">{item.title}</h3>
+                        <p className="text-sm text-slate-500 line-clamp-2">{item.content}</p>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               }
             </div>
           </section>
@@ -188,14 +208,37 @@ export function HomePage() {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
              {gallery.length === 0 ? <p className="text-slate-500 col-span-full">Belum ada foto.</p> : 
-                gallery.map(img => (
-                  <div key={img.id} className="aspect-video relative group overflow-hidden rounded-xl bg-slate-200">
-                    <img src={img.imageUrl} alt={img.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                      <p className="text-white font-medium text-sm">{img.title}</p>
+                gallery.map(img => {
+                  const getYoutubeId = (url: string) => {
+                    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+                    const match = url.match(regExp);
+                    return (match && match[2].length === 11) ? match[2] : null;
+                  };
+                  const ytId = getYoutubeId(img.imageUrl);
+
+                  return (
+                    <div key={img.id} className="aspect-video relative group overflow-hidden rounded-xl bg-slate-200">
+                      {ytId ? (
+                        <iframe 
+                           width="100%" 
+                           height="100%" 
+                           src={`https://www.youtube.com/embed/${ytId}`} 
+                           title={img.title}
+                           frameBorder="0" 
+                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                           allowFullScreen
+                           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        ></iframe>
+                      ) : (
+                        <img src={img.imageUrl} alt={img.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                      )}
+                      
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4 pointer-events-none">
+                        <p className="text-white font-medium text-sm">{img.title}</p>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
              }
           </div>
         </section>
@@ -207,7 +250,6 @@ export function HomePage() {
             <h2 className="text-2xl font-bold text-slate-800">Lokasi Masjid</h2>
           </div>
           <div className="aspect-[21/9] w-full rounded-2xl overflow-hidden shadow-lg border border-slate-200 bg-slate-200">
-             {/* Replace with actual map embed, using a generic map embed for demo */}
              <iframe 
                 src="https://maps.google.com/maps?q=Masjid%20Asseghaf,%20Kesugihan,%20Cilacap&t=&z=15&ie=UTF8&iwloc=&output=embed" 
                 width="100%" 
