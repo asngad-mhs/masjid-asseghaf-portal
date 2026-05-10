@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, storage } from '../../lib/firebase';
 import { useAuth } from '../../lib/AuthContext';
-import { collection, query, orderBy, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, addDoc, deleteDoc, updateDoc, doc } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 const getYoutubeId = (url: string) => {
@@ -25,6 +25,7 @@ export function AdminGallery() {
   const [file, setFile] = useState<File | null>(null);
   const [mediaUrl, setMediaUrl] = useState('');
   const [progress, setProgress] = useState(0);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -41,11 +42,11 @@ export function AdminGallery() {
     e.preventDefault();
     if (!user) return;
     
-    if (uploadType === 'file' && !file) {
+    if (!editingId && uploadType === 'file' && !file) {
       alert('Pilih file terlebih dahulu.');
       return;
     }
-    if (uploadType === 'url' && !mediaUrl) {
+    if (!editingId && uploadType === 'url' && !mediaUrl) {
        alert('Masukkan URL media.');
        return;
     }
@@ -57,7 +58,6 @@ export function AdminGallery() {
       let finalUrl = mediaUrl;
 
       if (uploadType === 'file' && file) {
-        // limit 50MB
         if (file.size > 50 * 1024 * 1024) {
           alert('Ukuran file maksimal 50MB.');
           setLoading(false);
@@ -83,23 +83,39 @@ export function AdminGallery() {
             }
           );
         });
+      } else if (editingId && !file && uploadType === 'file') {
+        const existingItem = items.find(i => i.id === editingId);
+        if (existingItem) {
+          finalUrl = existingItem.imageUrl;
+        }
       }
 
-      await addDoc(collection(db, 'gallery'), {
-        title,
-        imageUrl: finalUrl,
-        createdAt: new Date().toISOString(),
-        createdBy: user.uid
-      });
+      if (editingId) {
+        await updateDoc(doc(db, 'gallery', editingId), {
+          title,
+          imageUrl: finalUrl,
+          updatedAt: new Date().toISOString()
+        });
+        alert('Media berhasil diperbarui.');
+      } else {
+        await addDoc(collection(db, 'gallery'), {
+          title,
+          imageUrl: finalUrl,
+          createdAt: new Date().toISOString(),
+          createdBy: user.uid
+        });
+        alert('Media berhasil ditambahkan.');
+      }
       
       setTitle('');
       setMediaUrl('');
       setFile(null);
+      setEditingId(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
       fetchItems();
     } catch (error: any) {
       console.error(error);
-      alert('Gagal menambahkan foto: ' + error.message);
+      alert('Gagal menyimpan foto: ' + error.message);
     } finally {
       setLoading(false);
       setProgress(0);
@@ -108,9 +124,31 @@ export function AdminGallery() {
 
   const handleDelete = async (id: string) => {
     if (confirm('Hapus item ini?')) {
-      await deleteDoc(doc(db, 'gallery', id));
-      fetchItems();
+      try {
+        await deleteDoc(doc(db, 'gallery', id));
+        fetchItems();
+        alert('Media berhasil dihapus.');
+      } catch (error: any) {
+        console.error(error);
+        alert('Gagal menghapus: ' + error.message);
+      }
     }
+  };
+
+  const handleEdit = (item: any) => {
+    setTitle(item.title || '');
+    setMediaUrl(item.imageUrl || '');
+    setUploadType('url');
+    setEditingId(item.id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelEdit = () => {
+    setTitle('');
+    setMediaUrl('');
+    setFile(null);
+    setEditingId(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (
@@ -118,7 +156,7 @@ export function AdminGallery() {
       <h2 className="text-2xl font-bold text-slate-800 mb-6">Kelola Galeri</h2>
       
       <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 mb-8">
-        <h3 className="font-semibold text-lg mb-4">Tambah Media Baru</h3>
+        <h3 className="font-semibold text-lg mb-4">{editingId ? 'Edit Media' : 'Tambah Media Baru'}</h3>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1">Judul / Keterangan</label>
@@ -143,6 +181,7 @@ export function AdminGallery() {
              <div>
                 <label className="block text-sm font-medium mb-1">Pilih File (JPG, PNG, GIF, MP4, MOV - Max 50MB)</label>
                 <input ref={fileInputRef} type="file" accept=".jpg,.jpeg,.png,.svg,.webp,.gif,.mp4,.mov,image/*,video/mp4,video/quicktime" onChange={e => setFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded bg-white" />
+                {editingId && !file && <p className="text-sm text-slate-500 mt-1">Biarkan kosong jika tidak ingin mengubah media.</p>}
                 {loading && (
                   <div className="w-full bg-gray-200 rounded-full h-4 mt-3 overflow-hidden relative">
                     <div className="bg-emerald-600 h-full duration-300 ease-out flex items-center justify-center" style={{ width: `${Math.max(progress, 5)}%` }}>
@@ -158,10 +197,13 @@ export function AdminGallery() {
              </div>
           )}
 
-          <div className="text-right mt-2">
-             <button disabled={loading} type="submit" className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center min-w-[150px] ml-auto">
-               {loading ? 'Menyimpan...' : 'Simpan Media'}
-             </button>
+          <div className="text-right mt-2 flex justify-end space-x-2">
+            {editingId && (
+              <button type="button" onClick={handleCancelEdit} className="bg-slate-300 text-slate-700 px-6 py-2 rounded-lg hover:bg-slate-400">Batal</button>
+            )}
+            <button disabled={loading} type="submit" className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center min-w-[150px]">
+              {loading ? 'Menyimpan...' : (editingId ? 'Simpan Perubahan' : 'Simpan Media')}
+            </button>
           </div>
         </form>
       </div>
@@ -192,7 +234,10 @@ export function AdminGallery() {
                 
                 <div className="p-3 flex justify-between items-center gap-2 mt-auto">
                   <span className="text-sm font-medium truncate" title={item.title}>{item.title}</span>
-                  <button onClick={() => handleDelete(item.id)} className="text-red-500 hover:text-red-700 text-sm font-medium shrink-0">Hapus</button>
+                  <div className="flex space-x-2 shrink-0">
+                    <button onClick={() => handleEdit(item)} className="text-blue-500 hover:text-blue-700 text-sm font-medium">Edit</button>
+                    <button onClick={() => handleDelete(item.id)} className="text-red-500 hover:text-red-700 text-sm font-medium">Hapus</button>
+                  </div>
                 </div>
               </div>
             );

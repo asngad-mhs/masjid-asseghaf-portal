@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../lib/AuthContext';
-import { collection, query, orderBy, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
-import { format } from 'date-fns';
+import { collection, query, orderBy, getDocs, addDoc, deleteDoc, updateDoc, doc } from 'firebase/firestore';
 
 export function AdminEvents() {
   const { user } = useAuth();
   const [events, setEvents] = useState<any[]>([]);
   const [form, setForm] = useState({ title: '', description: '', date: '', time: '', location: '', imageUrl: '' });
   const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchEvents();
@@ -25,16 +25,26 @@ export function AdminEvents() {
     if (!user) return;
     setLoading(true);
     try {
-      await addDoc(collection(db, 'events'), {
-        ...form,
-        createdAt: new Date().toISOString(),
-        createdBy: user.uid
-      });
+      if (editingId) {
+        await updateDoc(doc(db, 'events', editingId), {
+          ...form,
+          updatedAt: new Date().toISOString()
+        });
+        alert('Kegiatan berhasil diperbarui.');
+      } else {
+        await addDoc(collection(db, 'events'), {
+          ...form,
+          createdAt: new Date().toISOString(),
+          createdBy: user.uid
+        });
+        alert('Kegiatan berhasil ditambahkan.');
+      }
       setForm({ title: '', description: '', date: '', time: '', location: '', imageUrl: '' });
+      setEditingId(null);
       fetchEvents();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert('Gagal menambahkan kegiatan.');
+      alert('Gagal menyimpan kegiatan: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -42,9 +52,33 @@ export function AdminEvents() {
 
   const handleDelete = async (id: string) => {
     if (confirm('Hapus kegiatan ini?')) {
-      await deleteDoc(doc(db, 'events', id));
-      fetchEvents();
+      try {
+        await deleteDoc(doc(db, 'events', id));
+        fetchEvents();
+        alert('Kegiatan berhasil dihapus.');
+      } catch (error: any) {
+        console.error(error);
+        alert('Gagal menghapus: ' + error.message);
+      }
     }
+  };
+
+  const handleEdit = (ev: any) => {
+    setForm({
+      title: ev.title || '',
+      description: ev.description || '',
+      date: ev.date || '',
+      time: ev.time || '',
+      location: ev.location || '',
+      imageUrl: ev.imageUrl || ''
+    });
+    setEditingId(ev.id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelEdit = () => {
+    setForm({ title: '', description: '', date: '', time: '', location: '', imageUrl: '' });
+    setEditingId(null);
   };
 
   return (
@@ -52,7 +86,7 @@ export function AdminEvents() {
       <h2 className="text-2xl font-bold text-slate-800 mb-6">Kelola Kegiatan Masjid</h2>
       
       <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 mb-8">
-        <h3 className="font-semibold text-lg mb-4">Tambah Kegiatan Baru</h3>
+        <h3 className="font-semibold text-lg mb-4">{editingId ? 'Edit Kegiatan' : 'Tambah Kegiatan Baru'}</h3>
         <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
             <label className="block text-sm font-medium mb-1">Judul</label>
@@ -78,8 +112,13 @@ export function AdminEvents() {
             <label className="block text-sm font-medium mb-1">URL Gambar (Opsional)</label>
             <input value={form.imageUrl} onChange={e => setForm({...form, imageUrl: e.target.value})} className="w-full p-2 border rounded" placeholder="https://..." />
           </div>
-          <div className="col-span-2 text-right mt-2">
-             <button disabled={loading} type="submit" className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700">Simpan Kegiatan</button>
+          <div className="col-span-2 text-right mt-2 flex justify-end space-x-2">
+            {editingId && (
+              <button type="button" onClick={handleCancelEdit} className="bg-slate-300 text-slate-700 px-6 py-2 rounded-lg hover:bg-slate-400">Batal</button>
+            )}
+            <button disabled={loading} type="submit" className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700">
+              {editingId ? 'Simpan Perubahan' : 'Simpan Kegiatan'}
+            </button>
           </div>
         </form>
       </div>
@@ -100,7 +139,8 @@ export function AdminEvents() {
                   <td className="p-3">{ev.date}</td>
                   <td className="p-3 font-medium">{ev.title}</td>
                   <td className="p-3 text-slate-500">{ev.time}</td>
-                  <td className="p-3">
+                  <td className="p-3 flex space-x-3">
+                     <button onClick={() => handleEdit(ev)} className="text-blue-500 hover:text-blue-700 text-sm font-medium">Edit</button>
                      <button onClick={() => handleDelete(ev.id)} className="text-red-500 hover:text-red-700 text-sm font-medium">Hapus</button>
                   </td>
                 </tr>

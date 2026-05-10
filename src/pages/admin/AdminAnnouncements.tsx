@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../lib/AuthContext';
-import { collection, query, orderBy, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, addDoc, deleteDoc, updateDoc, doc } from 'firebase/firestore';
 
 export function AdminAnnouncements() {
   const { user } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [form, setForm] = useState({ title: '', content: '' });
   const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchItems();
@@ -24,16 +25,26 @@ export function AdminAnnouncements() {
     if (!user) return;
     setLoading(true);
     try {
-      await addDoc(collection(db, 'announcements'), {
-        ...form,
-        createdAt: new Date().toISOString(),
-        createdBy: user.uid
-      });
+      if (editingId) {
+        await updateDoc(doc(db, 'announcements', editingId), {
+          ...form,
+          updatedAt: new Date().toISOString()
+        });
+        alert('Pengumuman berhasil diperbarui.');
+      } else {
+        await addDoc(collection(db, 'announcements'), {
+          ...form,
+          createdAt: new Date().toISOString(),
+          createdBy: user.uid
+        });
+        alert('Pengumuman berhasil ditambahkan.');
+      }
       setForm({ title: '', content: '' });
+      setEditingId(null);
       fetchItems();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert('Gagal menambahkan pengumuman.');
+      alert('Gagal menyimpan pengumuman: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -41,9 +52,29 @@ export function AdminAnnouncements() {
 
   const handleDelete = async (id: string) => {
     if (confirm('Hapus pengumuman ini?')) {
-      await deleteDoc(doc(db, 'announcements', id));
-      fetchItems();
+      try {
+        await deleteDoc(doc(db, 'announcements', id));
+        fetchItems();
+        alert('Pengumuman berhasil dihapus.');
+      } catch (error: any) {
+        console.error(error);
+        alert('Gagal menghapus: ' + error.message);
+      }
     }
+  };
+
+  const handleEdit = (item: any) => {
+    setForm({
+      title: item.title || '',
+      content: item.content || ''
+    });
+    setEditingId(item.id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelEdit = () => {
+    setForm({ title: '', content: '' });
+    setEditingId(null);
   };
 
   return (
@@ -51,7 +82,7 @@ export function AdminAnnouncements() {
       <h2 className="text-2xl font-bold text-slate-800 mb-6">Kelola Pengumuman</h2>
       
       <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 mb-8">
-        <h3 className="font-semibold text-lg mb-4">Tambah Pengumuman Baru</h3>
+        <h3 className="font-semibold text-lg mb-4">{editingId ? 'Edit Pengumuman' : 'Tambah Pengumuman Baru'}</h3>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1">Judul</label>
@@ -61,8 +92,13 @@ export function AdminAnnouncements() {
             <label className="block text-sm font-medium mb-1">Isi Pengumuman</label>
             <textarea required value={form.content} onChange={e => setForm({...form, content: e.target.value})} className="w-full p-2 border rounded resize-none" rows={4}></textarea>
           </div>
-          <div className="text-right mt-2">
-             <button disabled={loading} type="submit" className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700">Simpan Pengumuman</button>
+          <div className="text-right mt-2 flex justify-end space-x-2">
+            {editingId && (
+              <button type="button" onClick={handleCancelEdit} className="bg-slate-300 text-slate-700 px-6 py-2 rounded-lg hover:bg-slate-400">Batal</button>
+            )}
+            <button disabled={loading} type="submit" className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700">
+              {editingId ? 'Simpan Perubahan' : 'Simpan Pengumuman'}
+            </button>
           </div>
         </form>
       </div>
@@ -81,7 +117,8 @@ export function AdminAnnouncements() {
                 <tr key={item.id} className="border-b">
                   <td className="p-3">{new Date(item.createdAt).toLocaleDateString('id-ID')}</td>
                   <td className="p-3 font-medium">{item.title}</td>
-                  <td className="p-3">
+                  <td className="p-3 flex space-x-3">
+                     <button onClick={() => handleEdit(item)} className="text-blue-500 hover:text-blue-700 text-sm font-medium">Edit</button>
                      <button onClick={() => handleDelete(item.id)} className="text-red-500 hover:text-red-700 text-sm font-medium">Hapus</button>
                   </td>
                 </tr>
