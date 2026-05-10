@@ -38,15 +38,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
         
+        const isAdminEmail = firebaseUser.email === 'asngad@mhs.unugha.ac.id';
+        
         if (!userDoc.exists()) {
-          // If no users exist, make this user admin, otherwise 'user'
-          // For safety, let's just make the first login an admin, others users 
-          // (Actually querying list of users needs admin, maybe we just default to 'user' 
-          // or allow a specific email to be admin for demo. Let's make everyone 'user' for now, 
-          // and we can manually upgrade if needed, or if email matches specific).
-          const isFirstAdmin = firebaseUser.email === 'asngad@mhs.unugha.ac.id'; // Taking the user's email as admin
-          
-          const newRole = isFirstAdmin ? 'admin' : 'user';
+          const newRole = isAdminEmail ? 'admin' : 'user';
           await setDoc(userDocRef, {
             email: firebaseUser.email,
             displayName: firebaseUser.displayName || 'Unknown User',
@@ -55,7 +50,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
           setRole(newRole);
         } else {
-          setRole(userDoc.data().role as 'user' | 'admin');
+          const data = userDoc.data();
+          const currentRole = data.role;
+          
+          // Sync displayName and role for admin
+          let needsUpdate = false;
+          const updates: any = {};
+          
+          if (isAdminEmail && currentRole !== 'admin') {
+            updates.role = 'admin';
+            needsUpdate = true;
+          }
+          if (firebaseUser.displayName && data.displayName !== firebaseUser.displayName) {
+            updates.displayName = firebaseUser.displayName;
+            needsUpdate = true;
+          }
+
+          if (needsUpdate) {
+            await setDoc(userDocRef, { ...data, ...updates }, { merge: true });
+            setRole(updates.role || currentRole);
+          } else {
+            setRole(currentRole as 'user' | 'admin');
+          }
         }
       } else {
         setRole(null);
