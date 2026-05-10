@@ -25,6 +25,7 @@ export function AdminGallery() {
   const [file, setFile] = useState<File | null>(null);
   const [mediaUrl, setMediaUrl] = useState('');
   const [progress, setProgress] = useState(0);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchItems();
@@ -94,6 +95,7 @@ export function AdminGallery() {
       setTitle('');
       setMediaUrl('');
       setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
       fetchItems();
     } catch (error: any) {
       console.error(error);
@@ -140,10 +142,12 @@ export function AdminGallery() {
           {uploadType === 'file' ? (
              <div>
                 <label className="block text-sm font-medium mb-1">Pilih File (JPG, PNG, GIF, MP4, MOV - Max 50MB)</label>
-                <input type="file" accept=".jpg,.jpeg,.png,.svg,.webp,.gif,.mp4,.mov,image/*,video/mp4,video/quicktime" onChange={e => setFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded bg-white" />
-                {progress > 0 && loading && (
-                  <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
-                    <div className="bg-emerald-600 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
+                <input ref={fileInputRef} type="file" accept=".jpg,.jpeg,.png,.svg,.webp,.gif,.mp4,.mov,image/*,video/mp4,video/quicktime" onChange={e => setFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded bg-white" />
+                {loading && (
+                  <div className="w-full bg-gray-200 rounded-full h-4 mt-3 overflow-hidden relative">
+                    <div className="bg-emerald-600 h-full duration-300 ease-out flex items-center justify-center" style={{ width: `${Math.max(progress, 5)}%` }}>
+                       <span className="text-white text-xs font-bold absolute w-full text-center">{Math.round(progress)}%</span>
+                    </div>
                   </div>
                 )}
              </div>
