@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 export function Footer() {
   return (
@@ -19,8 +20,15 @@ export function Footer() {
             <p className="text-emerald-300/80">Website: masjidasseghaf.ac.id</p>
           </div>
         </div>
-        <div className="border-t border-emerald-800/50 mt-8 pt-6 text-center text-emerald-400 text-sm">
-          &copy; {new Date().getFullYear()} Masjid Asseghaf. All rights reserved.
+        <div className="border-t border-emerald-800/50 mt-8 pt-6 flex flex-col md:flex-row justify-between items-center px-4">
+          <div className="text-emerald-400 text-sm mb-4 md:mb-0">
+            &copy; {new Date().getFullYear()} Masjid Asseghaf. All rights reserved.
+          </div>
+          <div>
+            <Link to="/admin-login" className="text-emerald-500/50 hover:text-emerald-400 transition-colors text-sm flex items-center">
+              Login Admin
+            </Link>
+          </div>
         </div>
       </div>
     </footer>
