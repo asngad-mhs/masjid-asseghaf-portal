@@ -8,6 +8,7 @@ import { HomePage } from './pages/HomePage';
 import { DonationPage } from './pages/DonationPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { AdminPortal } from './pages/admin/AdminPortal';
+import { AdminLogin } from './pages/admin/AdminLogin';
 
 function ProtectedRoute({ children, adminOnly = false }: { children: React.ReactNode, adminOnly?: boolean }) {
   const { user, role, loading } = useAuth();
@@ -29,6 +30,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/donasi" element={<DonationPage />} />
+              <Route path="/admin-login" element={<AdminLogin />} />
               <Route 
                 path="/dashboard" 
                 element={

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
-import { Menu, X, Moon } from 'lucide-react';
+import { Menu, X, Moon, ShieldCheck } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export function Navbar() {
@@ -51,6 +51,12 @@ export function Navbar() {
               </Link>
             )}
 
+            {role === 'admin' && (
+              <Link to="/admin" title="Portal Admin" className="text-emerald-100 hover:text-emerald-300 transition-colors flex items-center">
+                <ShieldCheck className="w-6 h-6" />
+              </Link>
+            )}
+
             <button
               onClick={handleAuth}
               className="bg-emerald-700 hover:bg-emerald-600 px-4 py-2 rounded-md font-medium transition-colors"
@@ -92,6 +98,17 @@ export function Navbar() {
                 onClick={() => setIsOpen(false)}
               >
                 Riwayat & Ibadah
+              </Link>
+            )}
+
+            {role === 'admin' && (
+              <Link
+                to="/admin"
+                className="block px-3 py-2 rounded-md font-medium hover:bg-emerald-700 flex items-center space-x-2"
+                onClick={() => setIsOpen(false)}
+              >
+                <ShieldCheck className="w-5 h-5 text-emerald-300" />
+                <span>Portal Admin</span>
               </Link>
             )}
             
