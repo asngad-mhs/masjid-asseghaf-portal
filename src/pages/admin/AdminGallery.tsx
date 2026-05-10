@@ -10,6 +10,12 @@ const getYoutubeId = (url: string) => {
   return (match && match[2].length === 11) ? match[2] : null;
 };
 
+const isVideoMedia = (url: string) => {
+  if (!url) return false;
+  const urlWithoutQuery = url.split('?')[0].toLowerCase();
+  return urlWithoutQuery.endsWith('.mp4') || urlWithoutQuery.endsWith('.mov');
+};
+
 export function AdminGallery() {
   const { user } = useAuth();
   const [items, setItems] = useState<any[]>([]);
@@ -50,9 +56,9 @@ export function AdminGallery() {
       let finalUrl = mediaUrl;
 
       if (uploadType === 'file' && file) {
-        // limit 10MB
-        if (file.size > 10 * 1024 * 1024) {
-          alert('Ukuran file maksimal 10MB.');
+        // limit 50MB
+        if (file.size > 50 * 1024 * 1024) {
+          alert('Ukuran file maksimal 50MB.');
           setLoading(false);
           return;
         }
@@ -133,8 +139,8 @@ export function AdminGallery() {
 
           {uploadType === 'file' ? (
              <div>
-                <label className="block text-sm font-medium mb-1">Pilih File (JPG, PNG, dll - Max 10MB)</label>
-                <input type="file" accept="image/*,video/mp4" onChange={e => setFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded bg-white" />
+                <label className="block text-sm font-medium mb-1">Pilih File (JPG, PNG, GIF, MP4, MOV - Max 50MB)</label>
+                <input type="file" accept=".jpg,.jpeg,.png,.svg,.webp,.gif,.mp4,.mov,image/*,video/mp4,video/quicktime" onChange={e => setFile(e.target.files?.[0] || null)} className="w-full p-2 border rounded bg-white" />
                 {progress > 0 && loading && (
                   <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
                     <div className="bg-emerald-600 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
@@ -159,6 +165,7 @@ export function AdminGallery() {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
          {items.map((item) => {
             const ytId = getYoutubeId(item.imageUrl);
+            const isVid = isVideoMedia(item.imageUrl);
             return (
               <div key={item.id} className="border rounded-lg overflow-hidden bg-white shadow-sm flex flex-col h-full">
                 {ytId ? (
@@ -173,6 +180,8 @@ export function AdminGallery() {
                        allowFullScreen
                      ></iframe>
                    </div>
+                ) : isVid ? (
+                   <video src={item.imageUrl} controls className="w-full h-40 object-cover bg-black" />
                 ) : (
                    <img src={item.imageUrl} alt={item.title} className="w-full h-40 object-cover bg-slate-100" />
                 )}

@@ -207,7 +207,7 @@ export function HomePage() {
             <h2 className="text-2xl font-bold text-slate-800">Galeri Foto</h2>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-             {gallery.length === 0 ? <p className="text-slate-500 col-span-full">Belum ada foto.</p> : 
+              {gallery.length === 0 ? <p className="text-slate-500 col-span-full">Belum ada foto.</p> : 
                 gallery.map(img => {
                   const getYoutubeId = (url: string) => {
                     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -215,6 +215,13 @@ export function HomePage() {
                     return (match && match[2].length === 11) ? match[2] : null;
                   };
                   const ytId = getYoutubeId(img.imageUrl);
+
+                  const isVideoMedia = (url: string) => {
+                    if (!url) return false;
+                    const urlWithoutQuery = url.split('?')[0].toLowerCase();
+                    return urlWithoutQuery.endsWith('.mp4') || urlWithoutQuery.endsWith('.mov');
+                  };
+                  const isVid = isVideoMedia(img.imageUrl);
 
                   return (
                     <div key={img.id} className="aspect-video relative group overflow-hidden rounded-xl bg-slate-200">
@@ -229,6 +236,8 @@ export function HomePage() {
                            allowFullScreen
                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                         ></iframe>
+                      ) : isVid ? (
+                        <video src={img.imageUrl} controls={false} autoPlay loop muted playsInline className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 bg-black" />
                       ) : (
                         <img src={img.imageUrl} alt={img.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
                       )}
