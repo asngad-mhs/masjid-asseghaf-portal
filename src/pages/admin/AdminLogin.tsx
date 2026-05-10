@@ -36,9 +36,9 @@ export function AdminLogin() {
                 alert('Akun Anda tidak memiliki hak akses admin.');
                 navigate('/');
               }
-            } catch (err) {
+            } catch (err: any) {
               console.error(err);
-              alert('Terjadi kesalahan saat login.');
+              alert('Terjadi kesalahan saat login:\n\n' + err.message + '\n\nJika error "auth/unauthorized-domain", Anda harus menambahkan domain ke Firebase Authentication.');
             }
           }}
           className="w-full flex items-center justify-center px-4 py-3 border border-transparent rounded-xl shadow-sm text-base font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors"
