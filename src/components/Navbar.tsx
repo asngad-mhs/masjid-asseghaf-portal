@@ -35,8 +35,15 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link to="/" className="flex items-center space-x-2">
-              <Moon className="h-8 w-8 text-emerald-400" />
+            <Link to="/" className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center overflow-hidden border-2 border-emerald-400 shrink-0">
+                <img src="/logo.jfif" alt="Logo Masjid Asseghaf" className="w-full h-full object-contain" onError={(e) => {
+                  // Fallback to Moon icon if image not found
+                  (e.target as HTMLElement).style.display = 'none';
+                  (e.target as HTMLElement).nextElementSibling?.classList.remove('hidden');
+                }} />
+                <Moon className="h-6 w-6 text-emerald-600 hidden" />
+              </div>
               <span className="font-bold text-xl tracking-tight">Masjid Asseghaf</span>
             </Link>
           </div>
