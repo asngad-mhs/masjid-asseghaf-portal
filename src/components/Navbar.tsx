@@ -14,7 +14,17 @@ export function Navbar() {
       await logout();
       navigate('/');
     } else {
-      await login();
+      try {
+        const loggedInRole = await login();
+        if (loggedInRole === 'admin') {
+          navigate('/admin');
+        } else if (loggedInRole === 'user') {
+          // You might want to navigate to dashboard
+          navigate('/dashboard');
+        }
+      } catch (error) {
+        console.error('Login failed', error);
+      }
     }
   };
 

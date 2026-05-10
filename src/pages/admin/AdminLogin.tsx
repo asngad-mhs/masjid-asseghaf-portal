@@ -29,7 +29,13 @@ export function AdminLogin() {
         <button
           onClick={async () => {
             try {
-              await login();
+              const loggedInRole = await login();
+              if (loggedInRole === 'admin') {
+                navigate('/admin');
+              } else if (loggedInRole === 'user') {
+                alert('Akun Anda tidak memiliki hak akses admin.');
+                navigate('/');
+              }
             } catch (err) {
               console.error(err);
               alert('Terjadi kesalahan saat login.');

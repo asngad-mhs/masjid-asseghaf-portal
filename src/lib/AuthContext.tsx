@@ -13,7 +13,7 @@ interface AuthContextType {
   user: User | null;
   role: 'user' | 'admin' | null;
   loading: boolean;
-  login: () => Promise<void>;
+  login: () => Promise<'admin' | 'user' | null>;
   logout: () => Promise<void>;
 }
 
@@ -21,7 +21,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   role: null,
   loading: true,
-  login: async () => {},
+  login: async () => null,
   logout: async () => {},
 });
 
@@ -82,9 +82,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const login = async () => {
+  const login = async (): Promise<'admin' | 'user' | null> => {
     const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    const result = await signInWithPopup(auth, provider);
+    
+    // Determine role immediately after login for quick redirect
+    const userDocRef = doc(db, 'users', result.user.uid);
+    const userDoc = await getDoc(userDocRef);
+    let currentRole: 'admin' | 'user' | null = null;
+    
+    if (userDoc.exists()) {
+      currentRole = userDoc.data().role as 'admin' | 'user';
+      if (result.user.email === 'asngad@mhs.unugha.ac.id' && currentRole !== 'admin') {
+        currentRole = 'admin';
+      }
+    } else {
+      if (result.user.email === 'asngad@mhs.unugha.ac.id') {
+        currentRole = 'admin';
+      } else {
+        currentRole = 'user';
+      }
+    }
+    
+    return currentRole;
   };
 
   const logout = async () => {
