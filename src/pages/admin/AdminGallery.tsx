@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db, storage } from '../../lib/firebase';
 import { useAuth } from '../../lib/AuthContext';
 import { collection, query, orderBy, getDocs, addDoc, deleteDoc, updateDoc, doc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 const getYoutubeId = (url: string) => {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -96,17 +96,30 @@ export function AdminGallery() {
           return;
         }
 
-        setProgress(30); // Starting compression
+        setProgress(10); // Starting compression
         const uploadData = await compressImage(file);
         
         const fileExt = file.type.startsWith('image/') ? 'jpg' : file.name.split('.').pop() || 'tmp';
         const storageRef = ref(storage, `gallery/${Date.now()}_upload.${fileExt}`);
         
-        setProgress(50); // Starting upload
-        const snapshot = await uploadBytes(storageRef, uploadData);
+        const uploadTask = uploadBytesResumable(storageRef, uploadData as Blob);
         
-        setProgress(90); // Getting URL
-        finalUrl = await getDownloadURL(snapshot.ref);
+        await new Promise((resolve, reject) => {
+          uploadTask.on(
+            'state_changed',
+            (snapshot) => {
+              const p = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              setProgress(20 + (p * 0.7));
+            },
+            (error) => reject(error),
+            () => {
+              getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+                finalUrl = downloadURL;
+                resolve(null);
+              }).catch(reject);
+            }
+          );
+        });
       } else if (editingId && !file && uploadType === 'file') {
         const existingItem = items.find(i => i.id === editingId);
         if (existingItem) {
