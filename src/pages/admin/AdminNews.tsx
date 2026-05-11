@@ -39,9 +39,12 @@ export function AdminNews() {
     setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   };
 
-  const compressImage = async (file: File): Promise<Blob | File> => {
-    if (!file.type.startsWith('image/')) return file;
-    return new Promise((resolve) => {
+  const compressImage = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      if (!file.type.startsWith('image/')) {
+        reject(new Error("Hanya file gambar yang didukung untuk upload langsung. Untuk video gunakan URL YouTube."));
+        return;
+      }
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
@@ -62,17 +65,16 @@ export function AdminNews() {
         const ctx = canvas.getContext('2d');
         if (ctx) ctx.drawImage(img, 0, 0, width, height);
         
-        canvas.toBlob((blob) => {
-          resolve(blob || file);
-        }, 'image/jpeg', 0.6);
+        // Convert to Base64 string with heavy compression
+        resolve(canvas.toDataURL('image/jpeg', 0.5));
       };
-      img.onerror = () => resolve(file);
+      img.onerror = () => reject(new Error("Gagal membaca gambar."));
       img.src = URL.createObjectURL(file);
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!user) return;
     
     if (!editingId && uploadType === 'file' && !file) {
@@ -85,42 +87,28 @@ export function AdminNews() {
     }
 
     setLoading(true);
-    setProgress(5);
+    setProgress(10);
 
     try {
       let finalUrl = mediaUrl;
 
       if (uploadType === 'file' && file) {
-        if (file.size > 50 * 1024 * 1024) {
-          alert('Ukuran file maksimal 50MB.');
+        if (file.size > 5 * 1024 * 1024) {
+          alert('Ukuran file maksimal 5MB. Jika video, upload ke YouTube dan masukkan URL.');
           setLoading(false);
           return;
         }
 
-        setProgress(10);
-        const uploadData = await compressImage(file);
-        
-        const fileExt = file.type.startsWith('image/') ? 'jpg' : file.name.split('.').pop() || 'tmp';
-        const storageRef = ref(storage, `news/${Date.now()}_upload.${fileExt}`);
-        
-        const uploadTask = uploadBytesResumable(storageRef, uploadData as Blob);
-        
-        await new Promise((resolve, reject) => {
-          uploadTask.on(
-            'state_changed',
-            (snapshot) => {
-              const p = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-              setProgress(20 + (p * 0.7));
-            },
-            (error) => reject(error),
-            () => {
-              getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-                finalUrl = downloadURL;
-                resolve(null);
-              }).catch(reject);
-            }
-          );
-        });
+        setProgress(30);
+        try {
+          finalUrl = await compressImage(file);
+          setProgress(70);
+        } catch (err: any) {
+          alert(err.message);
+          setLoading(false);
+          setProgress(0);
+          return;
+        }
       } else if (editingId && !file && uploadType === 'file') {
         // keep existing url if file upload was selected but no new file provided
         const existingItem = items.find(i => i.id === editingId);
@@ -129,7 +117,7 @@ export function AdminNews() {
         }
       }
 
-      setProgress(95);
+      setProgress(90);
 
       if (editingId) {
         await updateDoc(doc(db, 'news', editingId), {
