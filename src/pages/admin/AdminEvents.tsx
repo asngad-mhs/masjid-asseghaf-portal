@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db, storage } from '../../lib/firebase';
 import { useAuth } from '../../lib/AuthContext';
 import { collection, query, orderBy, getDocs, addDoc, deleteDoc, updateDoc, doc } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { getYoutubeId, isVideoMedia } from '../../lib/mediaUtils';
 
 export function AdminEvents() {
@@ -129,36 +129,16 @@ export function AdminEvents() {
         const storagePath = `events/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
         const storageRef = ref(storage, storagePath);
         
-        const uploadTask = uploadBytesResumable(storageRef, uploadData);
-
-        // Wrap upload task in a promise for reliability
-        finalUrl = await new Promise((resolve, reject) => {
-          uploadTask.on(
-            'state_changed',
-            (snapshot) => {
-              const total = snapshot.totalBytes || 1;
-              const progressValue = (snapshot.bytesTransferred / total) * 100;
-              if (isImage) {
-                setProgress(20 + (progressValue * 0.7));
-              } else {
-                setProgress(progressValue * 0.9);
-              }
-            },
-            (error) => {
-              console.error("Upload error:", error);
-              reject(new Error(`Gagal upload: ${error.message}`));
-            },
-            async () => {
-              try {
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                resolve(downloadURL);
-              } catch (err: any) {
-                console.error("Error getting download URL:", err);
-                reject(new Error("Gagal mendapatkan link file yang diupload."));
-              }
-            }
-          );
-        });
+        // Use uploadBytes for better reliability in some environments
+        try {
+          const snapshot = await uploadBytes(storageRef, uploadData);
+          setProgress(85);
+          const downloadURL = await getDownloadURL(snapshot.ref);
+          finalUrl = downloadURL;
+        } catch (error: any) {
+          console.error("Upload failed:", error);
+          throw new Error(`Gagal upload: ${error.message}`);
+        }
       } else if (editingId && !file && uploadType === 'file') {
         const existingItem = items.find(i => i.id === editingId);
         if (existingItem) {
