@@ -38,10 +38,10 @@ export function AdminGallery() {
     setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   };
 
-  const compressImage = async (file: File): Promise<string> => {
+  const compressImage = async (file: File): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       if (!file.type.startsWith('image/')) {
-        reject(new Error("Hanya file gambar yang didukung untuk upload langsung. Untuk video gunakan URL YouTube."));
+        resolve(file); // Return original for non-images (videos)
         return;
       }
       const img = new Image();
@@ -49,7 +49,7 @@ export function AdminGallery() {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const MAX_SIZE = 800;
+        const MAX_SIZE = 1200; // Increased size slightly for better quality
         
         if (width > height && width > MAX_SIZE) {
           height *= MAX_SIZE / width;
@@ -64,10 +64,15 @@ export function AdminGallery() {
         const ctx = canvas.getContext('2d');
         if (ctx) ctx.drawImage(img, 0, 0, width, height);
         
-        // Convert to Base64 string with heavy compression
-        resolve(canvas.toDataURL('image/jpeg', 0.5));
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            resolve(file);
+          }
+        }, 'image/jpeg', 0.8);
       };
-      img.onerror = () => reject(new Error("Gagal membaca gambar."));
+      img.onerror = () => resolve(file); // Fallback to original
       img.src = URL.createObjectURL(file);
     });
   };
@@ -86,28 +91,67 @@ export function AdminGallery() {
     }
 
     setLoading(true);
-    setProgress(10);
+    setProgress(5);
 
     try {
       let finalUrl = mediaUrl;
 
       if (uploadType === 'file' && file) {
-        if (file.size > 5 * 1024 * 1024) {
-          alert('Ukuran file maksimal 5MB untuk gambar.');
+        // Validation per type
+        const isImage = file.type.startsWith('image/');
+        const isVideo = file.type.startsWith('video/');
+        
+        if (!isImage && !isVideo) {
+          alert('Hanya file gambar atau video yang didukung.');
           setLoading(false);
           return;
         }
 
-        setProgress(30);
-        try {
-          finalUrl = await compressImage(file);
-          setProgress(70);
-        } catch (err: any) {
-          alert(err.message);
+        if (isVideo && file.size > 50 * 1024 * 1024) {
+          alert('Ukuran file video maksimal 50MB.');
           setLoading(false);
-          setProgress(0);
           return;
+        } else if (isImage && file.size > 10 * 1024 * 1024) {
+           alert('Ukuran file gambar maksimal 10MB.');
+           setLoading(false);
+           return;
         }
+
+        let uploadData: Blob | File = file;
+        
+        if (isImage) {
+           setProgress(10);
+           uploadData = await compressImage(file);
+        }
+
+        const fileExt = file.name.split('.').pop() || (isImage ? 'jpg' : 'mp4');
+        const storagePath = `gallery/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const storageRef = ref(storage, storagePath);
+        
+        const uploadTask = uploadBytesResumable(storageRef, uploadData);
+
+        await new Promise((resolve, reject) => {
+          uploadTask.on(
+            'state_changed',
+            (snapshot) => {
+              const p = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              setProgress(isImage ? 20 + (p * 0.7) : p);
+            },
+            (error) => {
+              console.error("Upload error:", error);
+              reject(new Error(`Gagal upload: ${error.message}`));
+            },
+            async () => {
+              try {
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                finalUrl = downloadURL;
+                resolve(null);
+              } catch (err) {
+                reject(err);
+              }
+            }
+          );
+        });
       } else if (editingId && !file && uploadType === 'file') {
         const existingItem = items.find(i => i.id === editingId);
         if (existingItem) {
@@ -115,22 +159,23 @@ export function AdminGallery() {
         }
       }
 
-      setProgress(90);
+      setProgress(95);
+
+      const galleryData = {
+        title,
+        imageUrl: finalUrl,
+        updatedAt: new Date().toISOString(),
+        ...(editingId ? {} : { 
+          createdAt: new Date().toISOString(),
+          createdBy: user.uid 
+        })
+      };
 
       if (editingId) {
-        await updateDoc(doc(db, 'gallery', editingId), {
-          title,
-          imageUrl: finalUrl,
-          updatedAt: new Date().toISOString()
-        });
+        await updateDoc(doc(db, 'gallery', editingId), galleryData);
         alert('Media berhasil diperbarui.');
       } else {
-        await addDoc(collection(db, 'gallery'), {
-          title,
-          imageUrl: finalUrl,
-          createdAt: new Date().toISOString(),
-          createdBy: user.uid
-        });
+        await addDoc(collection(db, 'gallery'), galleryData);
         alert('Media berhasil ditambahkan.');
       }
       
@@ -142,7 +187,7 @@ export function AdminGallery() {
       fetchItems();
     } catch (error: any) {
       console.error(error);
-      alert('Gagal menyimpan foto: ' + error.message);
+      alert('Gagal menyimpan: ' + error.message);
     } finally {
       setLoading(false);
       setProgress(0);

@@ -1,8 +1,10 @@
 {
   "name": "Masjid Asseghaf Portal",
-  "description": "Web apps Masjid Asseghaf dengan informasi kegiatan, donasi, jadwal sholat, galeri, berita, dan panel admin.",
+  "description": "Portal Masjid Asseghaf dengan fitur galeri media, berita, kegiatan, dan donasi.",
   "requestFramePermissions": [
     "geolocation"
   ],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
