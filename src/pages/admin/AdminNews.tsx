@@ -284,54 +284,56 @@ export function AdminNews() {
         </form>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-100 border-b">
-              <th className="p-3">Tanggal</th>
-              <th className="p-3">Gambar</th>
-              <th className="p-3">Judul</th>
-              <th className="p-3">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-             {items.map((item) => {
-                const ytId = getYoutubeId(item.imageUrl || '');
-                const isVid = isVideoMedia(item.imageUrl || '');
-                return (
-                  <tr key={item.id} className="border-b">
-                    <td className="p-3">{new Date(item.createdAt).toLocaleDateString('id-ID')}</td>
-                    <td className="p-3">
-                       {item.imageUrl ? (
-                         ytId ? (
-                            <div className="w-20 h-16 bg-black rounded overflow-hidden">
-                               <iframe 
-                                 width="100%" 
-                                 height="100%" 
-                                 src={`https://www.youtube.com/embed/${ytId}`} 
-                                 title={item.title}
-                                 frameBorder="0" 
-                               ></iframe>
-                            </div>
-                         ) : isVid ? (
-                            <video src={item.imageUrl} className="w-20 h-16 object-cover rounded bg-black" />
-                         ) : (
-                            <img src={item.imageUrl} alt={item.title} className="w-20 h-16 object-cover rounded" />
-                         )
-                       ) : (
-                         <span className="text-slate-400 text-sm">Tidak ada</span>
-                       )}
-                    </td>
-                    <td className="p-3 font-medium max-w-xs truncate">{item.title}</td>
-                    <td className="p-3 flex items-center space-x-3 mt-4">
-                       <button onClick={() => handleEdit(item)} className="text-blue-500 hover:text-blue-700 text-sm font-medium">Edit</button>
-                       <button onClick={() => handleDelete(item.id)} className="text-red-500 hover:text-red-700 text-sm font-medium">Hapus</button>
-                    </td>
-                  </tr>
-                );
-             })}
-          </tbody>
-        </table>
+      <div className="space-y-4">
+        {items.map((item) => {
+          const ytId = getYoutubeId(item.imageUrl || '');
+          const isVid = isVideoMedia(item.imageUrl || '');
+          return (
+            <div key={item.id} className="bg-white p-4 rounded-xl border border-slate-200 flex flex-col md:flex-row gap-6">
+              {item.imageUrl && (
+                <div className="w-full md:w-72 flex-shrink-0">
+                  {ytId ? (
+                    <div className="aspect-video w-full shadow-sm rounded-lg overflow-hidden">
+                      <iframe 
+                        width="100%" 
+                        height="100%" 
+                        src={`https://www.youtube.com/embed/${ytId}`} 
+                        title={item.title}
+                        frameBorder="0" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      ></iframe>
+                    </div>
+                  ) : isVid ? (
+                    <video src={item.imageUrl} controls className="w-full aspect-video object-cover rounded-lg bg-black shadow-sm" />
+                  ) : (
+                    <img src={item.imageUrl} alt={item.title} className="w-full aspect-video object-cover rounded-lg shadow-sm" />
+                  )}
+                </div>
+              )}
+              <div className="flex-grow flex flex-col">
+                <div className="text-xs font-semibold text-emerald-600 mb-1 uppercase tracking-wider">
+                  {new Date(item.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </div>
+                <h4 className="font-bold text-xl text-slate-800 mb-2">{item.title}</h4>
+                <p className="text-slate-600 text-sm line-clamp-3 mb-4 flex-grow">{item.content}</p>
+                <div className="flex items-center space-x-4 pt-4 border-t border-slate-100">
+                  <button onClick={() => handleEdit(item)} className="text-blue-500 hover:text-blue-700 text-sm font-bold flex items-center">
+                    Edit Detail
+                  </button>
+                  <button onClick={() => handleDelete(item.id)} className="text-red-500 hover:text-red-700 text-sm font-bold flex items-center">
+                    Hapus Berita
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {items.length === 0 && (
+          <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+            <p className="text-slate-500">Belum ada berita yang ditambahkan.</p>
+          </div>
+        )}
       </div>
     </div>
   );
