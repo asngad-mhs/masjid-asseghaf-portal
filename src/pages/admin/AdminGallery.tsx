@@ -137,30 +137,32 @@ export function AdminGallery() {
         
         const uploadTask = uploadBytesResumable(storageRef, uploadData);
 
-        await new Promise((resolve, reject) => {
-          uploadTask.on(
-            'state_changed',
-            (snapshot) => {
-              const total = snapshot.totalBytes || 1;
-              const p = (snapshot.bytesTransferred / total) * 100;
-              setProgress(isImage ? 20 + (p * 0.7) : p);
-            },
-            (error) => {
-              console.error("Upload error details:", error);
-              reject(new Error(`Gagal upload: ${error.message}. Pastikan koneksi stabil.`));
-            },
-            async () => {
-              try {
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                finalUrl = downloadURL;
-                resolve(null);
-              } catch (err: any) {
-                console.error("Get Download URL error:", err);
-                reject(new Error("Gagal mendapatkan link file yang diupload."));
-              }
+        // Progress listener
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const total = snapshot.totalBytes || 1;
+            const progressValue = (snapshot.bytesTransferred / total) * 100;
+            if (isImage) {
+              setProgress(20 + (progressValue * 0.7));
+            } else {
+              setProgress(progressValue * 0.9);
             }
-          );
-        });
+          },
+          (error) => {
+            console.error("Upload state_changed error:", error);
+          }
+        );
+
+        // Wait for completion
+        try {
+          await uploadTask;
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          finalUrl = downloadURL;
+        } catch (error: any) {
+          console.error("Upload task error:", error);
+          throw new Error(`Gagal upload: ${error.message}. Silakan coba lagi.`);
+        }
       } else if (editingId && !file && uploadType === 'file') {
         const existingItem = items.find(i => i.id === editingId);
         if (existingItem) {

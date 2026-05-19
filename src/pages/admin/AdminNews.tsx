@@ -16,11 +16,25 @@ export function AdminNews() {
   const [mediaUrl, setMediaUrl] = useState('');
   const [progress, setProgress] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [sortType, setSortType] = useState('newest'); // newest, oldest, az, za
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchItems();
   }, []);
+
+  useEffect(() => {
+    if (uploadType === 'file' && file) {
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else if (uploadType === 'url' && mediaUrl) {
+      setPreviewUrl(mediaUrl);
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [file, mediaUrl, uploadType]);
 
   const fetchItems = async () => {
     const q = query(collection(db, 'news'), orderBy('createdAt', 'desc'));
@@ -128,30 +142,34 @@ export function AdminNews() {
         
         const uploadTask = uploadBytesResumable(storageRef, uploadData);
 
-        await new Promise((resolve, reject) => {
-          uploadTask.on(
-            'state_changed',
-            (snapshot) => {
-              const total = snapshot.totalBytes || 1;
-              const p = (snapshot.bytesTransferred / total) * 100;
-              setProgress(isImage ? 20 + (p * 0.7) : p);
-            },
-            (error) => {
-              console.error("Upload error details:", error);
-              reject(new Error(`Gagal upload: ${error.message}. Pastikan koneksi stabil.`));
-            },
-            async () => {
-              try {
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                finalUrl = downloadURL;
-                resolve(null);
-              } catch (err: any) {
-                console.error("Get Download URL error:", err);
-                reject(new Error("Gagal mendapatkan link file yang diupload."));
-              }
+        // Progress listener
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const total = snapshot.totalBytes || 1;
+            const progressValue = (snapshot.bytesTransferred / total) * 100;
+            // Spread the progress from 20% to 90% for images (after compression)
+            // Or 0% to 90% for videos
+            if (isImage) {
+              setProgress(20 + (progressValue * 0.7));
+            } else {
+              setProgress(progressValue * 0.9);
             }
-          );
-        });
+          },
+          (error) => {
+            console.error("Upload state_changed error:", error);
+          }
+        );
+
+        // Wait for completion
+        try {
+          await uploadTask;
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          finalUrl = downloadURL;
+        } catch (error: any) {
+          console.error("Upload task error:", error);
+          throw new Error(`Gagal upload: ${error.message}. Silakan coba lagi.`);
+        }
       } else if (editingId && !file && uploadType === 'file') {
         const existingItem = items.find(i => i.id === editingId);
         if (existingItem) {
@@ -229,7 +247,22 @@ export function AdminNews() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-slate-800 mb-6">Kelola Berita</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-slate-800">Kelola Berita</h2>
+        <div className="flex items-center space-x-2">
+          <label className="text-sm font-medium text-slate-600">Urutkan:</label>
+          <select 
+            value={sortType} 
+            onChange={(e) => setSortType(e.target.value)}
+            className="p-2 border rounded-lg bg-white text-sm focus:ring-emerald-500 focus:border-emerald-500"
+          >
+            <option value="newest">Terbaru</option>
+            <option value="oldest">Terlama</option>
+            <option value="az">Judul (A-Z)</option>
+            <option value="za">Judul (Z-A)</option>
+          </select>
+        </div>
+      </div>
       
       <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 mb-8">
         <h3 className="font-semibold text-lg mb-4">{editingId ? 'Edit Berita' : 'Tambah Berita Baru'}</h3>
@@ -273,6 +306,36 @@ export function AdminNews() {
              </div>
           )}
 
+          {previewUrl && (
+            <div className="mt-4 border rounded-xl overflow-hidden bg-white max-w-md shadow-sm">
+               <p className="text-xs font-bold p-3 bg-slate-100 border-b text-slate-600 uppercase tracking-wider">Preview Media Berita</p>
+               <div className="aspect-video w-full bg-slate-50">
+                  {(() => {
+                     const ytId = getYoutubeId(previewUrl);
+                     const isVid = uploadType === 'file' ? file?.type.startsWith('video/') : isVideoMedia(previewUrl);
+                     
+                     if (ytId) {
+                        return (
+                           <iframe 
+                             width="100%" 
+                             height="100%" 
+                             src={`https://www.youtube.com/embed/${ytId}`} 
+                             title="Preview YouTube"
+                             frameBorder="0" 
+                             allowFullScreen
+                           ></iframe>
+                        );
+                     } else if (isVid) {
+                        return <video src={previewUrl} controls className="w-full h-full object-contain bg-black" />;
+                     } else if (previewUrl) {
+                        return <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />;
+                     }
+                     return null;
+                  })()}
+               </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium mb-1">Konten</label>
             <textarea required value={content} onChange={e => setContent(e.target.value)} className="w-full p-2 border rounded resize-none" rows={5}></textarea>
@@ -289,7 +352,13 @@ export function AdminNews() {
       </div>
 
       <div className="space-y-4">
-        {items.map((item) => {
+        {[...items].sort((a, b) => {
+          if (sortType === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          if (sortType === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          if (sortType === 'az') return (a.title || '').localeCompare(b.title || '');
+          if (sortType === 'za') return (b.title || '').localeCompare(a.title || '');
+          return 0;
+        }).map((item) => {
           const ytId = getYoutubeId(item.imageUrl || '');
           const isVid = isVideoMedia(item.imageUrl || '');
           return (
