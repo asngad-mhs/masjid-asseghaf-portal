@@ -112,21 +112,18 @@ export function AdminNews() {
       if (uploadType === 'file' && file) {
         const isImage = file.type.startsWith('image/');
         const isVideo = file.type.startsWith('video/');
+        const isPdf = file.type === 'application/pdf';
         
-        if (!isImage && !isVideo) {
-          alert('Hanya file gambar atau video yang didukung.');
+        if (!isImage && !isVideo && !isPdf) {
+          alert('Format file tidak didukung (Gunakan Gambar, Video, atau PDF).');
           setLoading(false);
           return;
         }
 
-        if (isVideo && file.size > 50 * 1024 * 1024) {
-          alert('Ukuran file video maksimal 50MB.');
+        if (file.size > 50 * 1024 * 1024) {
+          alert('Ukuran file maksimal 50MB.');
           setLoading(false);
           return;
-        } else if (isImage && file.size > 10 * 1024 * 1024) {
-           alert('Ukuran file gambar maksimal 10MB.');
-           setLoading(false);
-           return;
         }
 
         let uploadData: Blob | File = file;
@@ -136,7 +133,7 @@ export function AdminNews() {
            uploadData = await compressImage(file);
         }
 
-        const fileExt = file.name.split('.').pop() || (isImage ? 'jpg' : 'mp4');
+        const fileExt = file.name.split('.').pop() || (isImage ? 'jpg' : isVideo ? 'mp4' : 'pdf');
         const storagePath = `news/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
         const storageRef = ref(storage, storagePath);
         
@@ -313,6 +310,7 @@ export function AdminNews() {
                   {(() => {
                      const ytId = getYoutubeId(previewUrl);
                      const isVid = uploadType === 'file' ? file?.type.startsWith('video/') : isVideoMedia(previewUrl);
+                     const isPdf = uploadType === 'file' ? file?.type === 'application/pdf' : previewUrl.toLowerCase().endsWith('.pdf');
                      
                      if (ytId) {
                         return (
@@ -327,6 +325,8 @@ export function AdminNews() {
                         );
                      } else if (isVid) {
                         return <video src={previewUrl} controls className="w-full h-full object-contain bg-black" />;
+                     } else if (isPdf) {
+                        return <div className="p-4 text-center"><p className="font-bold text-red-600">PDF Document</p><p className="text-xs text-slate-500">{file?.name || 'File akan diupload'}</p></div>;
                      } else if (previewUrl) {
                         return <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />;
                      }
@@ -379,6 +379,8 @@ export function AdminNews() {
                     </div>
                   ) : isVid ? (
                     <video src={item.imageUrl} controls className="w-full aspect-video object-cover rounded-lg bg-black shadow-sm" />
+                  ) : item.imageUrl && item.imageUrl.toLowerCase().includes('.pdf') ? (
+                    <div className="w-full aspect-video bg-red-50 rounded-lg flex items-center justify-center text-red-500 font-bold">PDF</div>
                   ) : item.imageUrl ? (
                     <img src={item.imageUrl} alt={item.title} className="w-full aspect-video object-cover rounded-lg shadow-sm" />
                   ) : (
