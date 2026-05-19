@@ -227,8 +227,10 @@ export function HomePage() {
                         ></iframe>
                       ) : isVid ? (
                         <video src={img.imageUrl} controls={false} autoPlay loop muted playsInline className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 bg-black" />
-                      ) : (
+                      ) : img.imageUrl ? (
                         <img src={img.imageUrl} alt={img.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-slate-200 text-slate-400 text-xs">Media tidak tersedia</div>
                       )}
                       
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4 pointer-events-none">

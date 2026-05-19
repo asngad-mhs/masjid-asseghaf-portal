@@ -28,17 +28,20 @@ export function AdminGallery() {
   };
 
   const compressImage = async (file: File): Promise<Blob> => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       if (!file.type.startsWith('image/')) {
-        resolve(file); // Return original for non-images (videos)
+        resolve(file);
         return;
       }
       const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      
       img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-        const MAX_SIZE = 1200; // Increased size slightly for better quality
+        const MAX_SIZE = 1200;
         
         if (width > height && width > MAX_SIZE) {
           height *= MAX_SIZE / width;
@@ -54,15 +57,16 @@ export function AdminGallery() {
         if (ctx) ctx.drawImage(img, 0, 0, width, height);
         
         canvas.toBlob((blob) => {
-          if (blob) {
-            resolve(blob);
-          } else {
-            resolve(file);
-          }
+          resolve(blob || file);
         }, 'image/jpeg', 0.8);
       };
-      img.onerror = () => resolve(file); // Fallback to original
-      img.src = URL.createObjectURL(file);
+      
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(file);
+      };
+      
+      img.src = objectUrl;
     });
   };
 
@@ -123,20 +127,22 @@ export function AdminGallery() {
           uploadTask.on(
             'state_changed',
             (snapshot) => {
-              const p = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              const total = snapshot.totalBytes || 1;
+              const p = (snapshot.bytesTransferred / total) * 100;
               setProgress(isImage ? 20 + (p * 0.7) : p);
             },
             (error) => {
-              console.error("Upload error:", error);
-              reject(new Error(`Gagal upload: ${error.message}`));
+              console.error("Upload error details:", error);
+              reject(new Error(`Gagal upload: ${error.message}. Pastikan koneksi stabil.`));
             },
             async () => {
               try {
                 const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
                 finalUrl = downloadURL;
                 resolve(null);
-              } catch (err) {
-                reject(err);
+              } catch (err: any) {
+                console.error("Get Download URL error:", err);
+                reject(new Error("Gagal mendapatkan link file yang diupload."));
               }
             }
           );
@@ -289,8 +295,12 @@ export function AdminGallery() {
                    </div>
                 ) : isVid ? (
                    <video src={item.imageUrl} controls className="w-full h-40 object-cover bg-black" />
-                ) : (
+                ) : item.imageUrl ? (
                    <img src={item.imageUrl} alt={item.title} className="w-full h-40 object-cover bg-slate-100" />
+                ) : (
+                   <div className="w-full h-40 flex items-center justify-center bg-slate-100 text-slate-400 text-xs text-center p-2">
+                     Media tidak tersedia atau URL bermasalah
+                   </div>
                 )}
                 
                 <div className="p-3 flex justify-between items-center gap-2 mt-auto">

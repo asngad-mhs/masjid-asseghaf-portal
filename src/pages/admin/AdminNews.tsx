@@ -35,7 +35,10 @@ export function AdminNews() {
         return;
       }
       const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      
       img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
@@ -58,8 +61,13 @@ export function AdminNews() {
           resolve(blob || file);
         }, 'image/jpeg', 0.8);
       };
-      img.onerror = () => resolve(file);
-      img.src = URL.createObjectURL(file);
+      
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(file);
+      };
+      
+      img.src = objectUrl;
     });
   };
 
@@ -124,20 +132,22 @@ export function AdminNews() {
           uploadTask.on(
             'state_changed',
             (snapshot) => {
-              const p = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              const total = snapshot.totalBytes || 1;
+              const p = (snapshot.bytesTransferred / total) * 100;
               setProgress(isImage ? 20 + (p * 0.7) : p);
             },
             (error) => {
-              console.error("Upload error:", error);
-              reject(new Error(`Gagal upload: ${error.message}`));
+              console.error("Upload error details:", error);
+              reject(new Error(`Gagal upload: ${error.message}. Pastikan koneksi stabil.`));
             },
             async () => {
               try {
                 const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
                 finalUrl = downloadURL;
                 resolve(null);
-              } catch (err) {
-                reject(err);
+              } catch (err: any) {
+                console.error("Get Download URL error:", err);
+                reject(new Error("Gagal mendapatkan link file yang diupload."));
               }
             }
           );
@@ -300,8 +310,10 @@ export function AdminNews() {
                     </div>
                   ) : isVid ? (
                     <video src={item.imageUrl} controls className="w-full aspect-video object-cover rounded-lg bg-black shadow-sm" />
-                  ) : (
+                  ) : item.imageUrl ? (
                     <img src={item.imageUrl} alt={item.title} className="w-full aspect-video object-cover rounded-lg shadow-sm" />
+                  ) : (
+                    <div className="w-full aspect-video bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 text-xs">Media tidak tersedia</div>
                   )}
                 </div>
               )}
