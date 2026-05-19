@@ -15,11 +15,25 @@ export function AdminGallery() {
   const [mediaUrl, setMediaUrl] = useState('');
   const [progress, setProgress] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [sortType, setSortType] = useState('newest'); // newest, oldest, az, za
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchItems();
   }, []);
+
+  useEffect(() => {
+    if (uploadType === 'file' && file) {
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else if (uploadType === 'url' && mediaUrl) {
+      setPreviewUrl(mediaUrl);
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [file, mediaUrl, uploadType]);
 
   const fetchItems = async () => {
     const q = query(collection(db, 'gallery'), orderBy('createdAt', 'desc'));
@@ -220,7 +234,22 @@ export function AdminGallery() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-slate-800 mb-6">Kelola Galeri</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-slate-800">Kelola Galeri</h2>
+        <div className="flex items-center space-x-2">
+          <label className="text-sm font-medium text-slate-600">Urutkan:</label>
+          <select 
+            value={sortType} 
+            onChange={(e) => setSortType(e.target.value)}
+            className="p-2 border rounded-lg bg-white text-sm focus:ring-emerald-500 focus:border-emerald-500"
+          >
+            <option value="newest">Terbaru</option>
+            <option value="oldest">Terlama</option>
+            <option value="az">Judul (A-Z)</option>
+            <option value="za">Judul (Z-A)</option>
+          </select>
+        </div>
+      </div>
       
       <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 mb-8">
         <h3 className="font-semibold text-lg mb-4">{editingId ? 'Edit Media' : 'Tambah Media Baru'}</h3>
@@ -264,6 +293,35 @@ export function AdminGallery() {
              </div>
           )}
 
+          {previewUrl && (
+            <div className="mt-2 border rounded-lg overflow-hidden bg-white max-w-sm">
+               <p className="text-xs font-semibold p-2 bg-slate-100 border-b">Preview Media</p>
+               <div className="aspect-video w-full">
+                  {(() => {
+                     const ytId = getYoutubeId(previewUrl);
+                     const isVid = uploadType === 'file' ? file?.type.startsWith('video/') : isVideoMedia(previewUrl);
+                     
+                     if (ytId) {
+                        return (
+                           <iframe 
+                             width="100%" 
+                             height="100%" 
+                             src={`https://www.youtube.com/embed/${ytId}`} 
+                             title="Preview YouTube"
+                             frameBorder="0" 
+                             allowFullScreen
+                           ></iframe>
+                        );
+                     } else if (isVid) {
+                        return <video src={previewUrl} controls className="w-full h-full object-contain bg-black" />;
+                     } else {
+                        return <img src={previewUrl} alt="Preview" className="w-full h-full object-contain bg-slate-50" />;
+                     }
+                  })()}
+               </div>
+            </div>
+          )}
+
           <div className="text-right mt-2 flex justify-end space-x-2">
             {editingId && (
               <button type="button" onClick={handleCancelEdit} className="bg-slate-300 text-slate-700 px-6 py-2 rounded-lg hover:bg-slate-400">Batal</button>
@@ -276,7 +334,13 @@ export function AdminGallery() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-         {items.map((item) => {
+         {[...items].sort((a, b) => {
+            if (sortType === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            if (sortType === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+            if (sortType === 'az') return (a.title || '').localeCompare(b.title || '');
+            if (sortType === 'za') return (b.title || '').localeCompare(a.title || '');
+            return 0;
+         }).map((item) => {
             const ytId = getYoutubeId(item.imageUrl);
             const isVid = isVideoMedia(item.imageUrl);
             return (
