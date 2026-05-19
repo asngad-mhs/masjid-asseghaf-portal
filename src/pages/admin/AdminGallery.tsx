@@ -134,32 +134,34 @@ export function AdminGallery() {
         
         const uploadTask = uploadBytesResumable(storageRef, uploadData);
 
-        // Progress listener
-        uploadTask.on(
-          'state_changed',
-          (snapshot) => {
-            const total = snapshot.totalBytes || 1;
-            const progressValue = (snapshot.bytesTransferred / total) * 100;
-            if (isImage) {
-              setProgress(20 + (progressValue * 0.7));
-            } else {
-              setProgress(progressValue * 0.9);
+        // Wrap upload task in a promise for reliability
+        finalUrl = await new Promise((resolve, reject) => {
+          uploadTask.on(
+            'state_changed',
+            (snapshot) => {
+              const total = snapshot.totalBytes || 1;
+              const progressValue = (snapshot.bytesTransferred / total) * 100;
+              if (isImage) {
+                setProgress(20 + (progressValue * 0.7));
+              } else {
+                setProgress(progressValue * 0.9);
+              }
+            },
+            (error) => {
+              console.error("Upload error:", error);
+              reject(new Error(`Gagal upload: ${error.message}`));
+            },
+            async () => {
+              try {
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                resolve(downloadURL);
+              } catch (err: any) {
+                console.error("Error getting download URL:", err);
+                reject(new Error("Gagal mendapatkan link file yang diupload."));
+              }
             }
-          },
-          (error) => {
-            console.error("Upload state_changed error:", error);
-          }
-        );
-
-        // Wait for completion
-        try {
-          await uploadTask;
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          finalUrl = downloadURL;
-        } catch (error: any) {
-          console.error("Upload task error:", error);
-          throw new Error(`Gagal upload: ${error.message}. Silakan coba lagi.`);
-        }
+          );
+        });
       } else if (editingId && !file && uploadType === 'file') {
         const existingItem = items.find(i => i.id === editingId);
         if (existingItem) {
