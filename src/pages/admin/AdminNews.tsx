@@ -3,18 +3,7 @@ import { db, storage } from '../../lib/firebase';
 import { useAuth } from '../../lib/AuthContext';
 import { collection, query, orderBy, getDocs, addDoc, deleteDoc, updateDoc, doc } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-
-const getYoutubeId = (url: string) => {
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-  const match = url.match(regExp);
-  return (match && match[2].length === 11) ? match[2] : null;
-};
-
-const isVideoMedia = (url: string) => {
-  if (!url) return false;
-  const urlWithoutQuery = url.split('?')[0].toLowerCase();
-  return urlWithoutQuery.endsWith('.mp4') || urlWithoutQuery.endsWith('.mov');
-};
+import { getYoutubeId, isVideoMedia } from '../../lib/mediaUtils';
 
 export function AdminNews() {
   const { user } = useAuth();
@@ -83,7 +72,12 @@ export function AdminNews() {
       return;
     }
     if (!editingId && uploadType === 'url' && !mediaUrl) {
-       alert('Masukkan URL media.');
+       alert('Masukkan URL YouTube.');
+       return;
+    }
+
+    if (uploadType === 'url' && mediaUrl && !getYoutubeId(mediaUrl)) {
+       alert('Mohon masukkan URL YouTube yang valid.');
        return;
     }
 
@@ -264,8 +258,8 @@ export function AdminNews() {
              </div>
           ) : (
              <div>
-                <label className="block text-sm font-medium mb-1">Masukkan URL Gambar atau YouTube</label>
-                <input value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} className="w-full p-2 border rounded" placeholder="https://..." />
+                <label className="block text-sm font-medium mb-1">Masukkan URL YouTube</label>
+                <input value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} className="w-full p-2 border rounded" placeholder="https://www.youtube.com/watch?v=..." />
              </div>
           )}
 

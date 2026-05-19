@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../lib/AuthContext';
 import { collection, query, orderBy, getDocs, addDoc, deleteDoc, updateDoc, doc } from 'firebase/firestore';
+import { getYoutubeId } from '../../lib/mediaUtils';
 
 export function AdminTausiyah() {
   const { user } = useAuth();
@@ -23,6 +24,12 @@ export function AdminTausiyah() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    if (!getYoutubeId(form.videoUrl)) {
+      alert('Mohon masukkan URL YouTube yang valid.');
+      return;
+    }
+
     setLoading(true);
     try {
       if (editingId) {
@@ -100,8 +107,8 @@ export function AdminTausiyah() {
             <input required type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="w-full p-2 border rounded" />
           </div>
           <div className="col-span-2 md:col-span-1">
-            <label className="block text-sm font-medium mb-1">URL Video (Youtube/dll)</label>
-            <input required value={form.videoUrl} onChange={e => setForm({...form, videoUrl: e.target.value})} className="w-full p-2 border rounded" placeholder="https://..." />
+            <label className="block text-sm font-medium mb-1">URL Video YouTube</label>
+            <input required value={form.videoUrl} onChange={e => setForm({...form, videoUrl: e.target.value})} className="w-full p-2 border rounded" placeholder="https://www.youtube.com/watch?v=..." />
           </div>
           <div className="col-span-2">
             <label className="block text-sm font-medium mb-1">Deskripsi Singkat</label>

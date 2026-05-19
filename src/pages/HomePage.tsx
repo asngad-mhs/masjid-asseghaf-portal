@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import axios from 'axios';
 import { motion } from 'framer-motion';
+import { getYoutubeId, isVideoMedia } from '../lib/mediaUtils';
 
 // --- Types ---
 interface NewsItem { id: string; title: string; content: string; imageUrl?: string; createdAt: string; }
@@ -138,29 +139,28 @@ export function HomePage() {
             <div className="space-y-6">
               {news.length === 0 ? <p className="text-slate-500">Belum ada berita.</p> : 
                 news.map(item => {
-                  const getYoutubeId = (url: string) => {
-                    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-                    const match = url.match(regExp);
-                    return (match && match[2].length === 11) ? match[2] : null;
-                  };
-                  const ytId = item.imageUrl ? getYoutubeId(item.imageUrl) : null;
+                  const ytId = getYoutubeId(item.imageUrl || '');
+                  const isVid = isVideoMedia(item.imageUrl || '');
 
                   return (
                     <div key={item.id} className="flex space-x-4 bg-white p-4 rounded-xl shadow-sm border border-slate-100">
                       {item.imageUrl && (
-                        ytId ? (
-                          <div className="w-24 h-24 shrink-0 bg-black rounded-lg overflow-hidden">
+                        <div className="w-24 h-24 shrink-0 bg-black rounded-lg overflow-hidden">
+                          {ytId ? (
                              <iframe 
                                width="100%" 
                                height="100%" 
                                src={`https://www.youtube.com/embed/${ytId}`} 
                                title={item.title}
                                frameBorder="0" 
+                               allowFullScreen
                              ></iframe>
-                          </div>
-                        ) : (
-                          <img src={item.imageUrl} alt={item.title} className="w-24 h-24 object-cover rounded-lg shrink-0" />
-                        )
+                          ) : isVid ? (
+                            <video src={item.imageUrl} className="w-full h-full object-cover" controls={false} muted autoPlay loop playsInline />
+                          ) : (
+                            <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+                          )}
+                        </div>
                       )}
                       <div>
                         <h3 className="font-semibold text-lg text-slate-900 leading-tight mb-2">{item.title}</h3>
@@ -209,18 +209,7 @@ export function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {gallery.length === 0 ? <p className="text-slate-500 col-span-full">Belum ada foto.</p> : 
                 gallery.map(img => {
-                  const getYoutubeId = (url: string) => {
-                    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-                    const match = url.match(regExp);
-                    return (match && match[2].length === 11) ? match[2] : null;
-                  };
                   const ytId = getYoutubeId(img.imageUrl);
-
-                  const isVideoMedia = (url: string) => {
-                    if (!url) return false;
-                    const urlWithoutQuery = url.split('?')[0].toLowerCase();
-                    return urlWithoutQuery.endsWith('.mp4') || urlWithoutQuery.endsWith('.mov');
-                  };
                   const isVid = isVideoMedia(img.imageUrl);
 
                   return (
@@ -249,6 +238,44 @@ export function HomePage() {
                   );
                 })
              }
+          </div>
+        </section>
+
+        {/* Tausiyah Online */}
+        <section>
+          <div className="flex items-center space-x-2 mb-6">
+            <Volume2 className="h-6 w-6 text-emerald-600" />
+            <h2 className="text-2xl font-bold text-slate-800">Tausiyah Online</h2>
+          </div>
+          <div className="grid md:grid-cols-2 gap-8">
+            {tausiyah.length === 0 ? <p className="text-slate-500 col-span-full">Belum ada tausiyah.</p> : 
+              tausiyah.map(item => {
+                const ytId = getYoutubeId(item.videoUrl);
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col sm:flex-row">
+                    <div className="sm:w-1/2 aspect-video bg-black">
+                      {ytId ? (
+                         <iframe 
+                           width="100%" 
+                           height="100%" 
+                           src={`https://www.youtube.com/embed/${ytId}`} 
+                           title={item.title}
+                           frameBorder="0" 
+                           allowFullScreen
+                         ></iframe>
+                      ) : (
+                         <div className="w-full h-full flex items-center justify-center text-white text-sm">Video tidak tersedia</div>
+                      )}
+                    </div>
+                    <div className="p-6 sm:w-1/2 flex flex-col justify-center">
+                      <h3 className="font-bold text-xl text-slate-900 mb-2">{item.title}</h3>
+                      <p className="text-emerald-700 font-medium text-sm mb-1">{item.speaker}</p>
+                      <p className="text-slate-500 text-xs">{format(new Date(item.date), 'dd MMMM yyyy', { locale: id })}</p>
+                    </div>
+                  </div>
+                );
+              })
+            }
           </div>
         </section>
 
